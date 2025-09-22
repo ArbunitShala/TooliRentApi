@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TooliRent.Core\TooliRent.Core.csproj" />
+    <ProjectReference Include="..\TooliRent.Infrastructure\TooliRent.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
