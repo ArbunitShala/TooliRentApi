@@ -16,6 +16,14 @@ namespace TooliRentApi.WebAPI.Controllers
         public AuthController(IAuthService auth) => _auth = auth;
 
         [AllowAnonymous]
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterRequest dto)
+        {
+            var res = await _auth.RegisterAsync(dto);
+            return res.Success ? StatusCode(201) : BadRequest(new { error = res.Error });
+        }
+
+        [AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest dto)
         {
@@ -23,17 +31,21 @@ namespace TooliRentApi.WebAPI.Controllers
             return res.Success ? Ok(res.Data) : Unauthorized(new { error = res.Error });
         }
 
-        // Enkel refresh – kräver att nuvarande token fortfarande är giltigt
-        [Authorize]
+        [AllowAnonymous]
         [HttpPost("refresh")]
-        public async Task<IActionResult> Refresh()
+        public async Task<IActionResult> Refresh([FromBody] RefreshRequest dto)
         {
-            var sid = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrWhiteSpace(sid)) return Unauthorized();
-            var userId = Guid.Parse(sid);
-
-            var res = await _auth.RefreshAsync(userId);
+            var res = await _auth.RefreshAsync(dto);
             return res.Success ? Ok(res.Data) : Unauthorized(new { error = res.Error });
+        }
+
+        // spärrar refresh-token
+        [Authorize]
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout([FromBody] RefreshRequest dto)
+        {
+            var res = await _auth.LogoutAsync(dto);
+            return res.Success ? NoContent() : BadRequest(new { error = res.Error });
         }
     }
 }

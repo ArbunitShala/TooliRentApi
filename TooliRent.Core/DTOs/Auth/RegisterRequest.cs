@@ -6,5 +6,5 @@ using System.Threading.Tasks;
 
 namespace TooliRent.Core.DTOs.Auth
 {
-    public sealed record LoginResponse(string Token, DateTime ExpiresAtUtc, string RefreshToken);
+    public sealed record RegisterRequest(string Email, string Password, string FirstName, string LastName);
 }

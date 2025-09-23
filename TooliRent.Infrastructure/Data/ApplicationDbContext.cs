@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using TooliRent.Core.DTOs.Auth;
+using TooliRent.Core.Models.Auth;
 using TooliRent.Core.Models.Bookings;
 using TooliRent.Core.Models.Catalog;
 using TooliRent.Infrastructure.Auth;
@@ -16,6 +18,7 @@ namespace TooliRent.Infrastructure.Data
         public DbSet<Tool> Tools => Set<Tool>();
         public DbSet<Booking> Bookings => Set<Booking>();
         public DbSet<BookingTool> BookingTools => Set<BookingTool>();
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
         protected override void OnModelCreating(ModelBuilder b)
         {
@@ -42,6 +45,14 @@ namespace TooliRent.Infrastructure.Data
                 .HasOne(bt => bt.Tool)
                 .WithMany(t => t.BookingTools)
                 .HasForeignKey(bt => bt.ToolId);
+
+            b.Entity<RefreshToken>()
+                .HasIndex(r => r.TokenHash)
+                .IsUnique();
+
+            b.Entity<RefreshToken>()
+                .Property(r => r.TokenHash)
+                .HasMaxLength(128);
         }
     }
 }
