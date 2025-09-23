@@ -10,8 +10,8 @@ namespace TooliRent.Core.Interfaces.Auth
     public interface IAuthService
     {
         Task<(bool Success, LoginResponse? Data, string? Error)> LoginAsync(LoginRequest request);
-
-        // Enkel refresh: skapa nytt access-token baserat på userId
-        Task<(bool Success, LoginResponse? Data, string? Error)> RefreshAsync(Guid userId);
+        Task<(bool Success, LoginResponse? Data, string? Error)> RefreshAsync(RefreshRequest request);
+        Task<(bool Success, string? Error)> LogoutAsync(RefreshRequest request);
+        Task<(bool Success, string? Error)> RegisterAsync(RegisterRequest request);
     }
 }

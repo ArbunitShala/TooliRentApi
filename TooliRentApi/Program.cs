@@ -21,6 +21,22 @@ namespace TooliRentApi
             var jwtSettings = builder.Configuration.GetSection("Jwt");
             var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
 
+            // CORS policy
+            const string CorsPolicy = "Dev";
+
+            builder.Services.AddCors(o =>
+            {
+                o.AddPolicy(CorsPolicy, p =>
+                    p.WithOrigins(
+                        "https://localhost:7044", // HTTPS-porten
+                        "http://localhost:5019"   // HTTP-porten
+                    )
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                // vi använder Bearer-header, inte cookies ? AllowCredentials behövs inte
+                );
+            });
+
             // JWT i swagger
             builder.Services.AddSwaggerGen(c =>
             {
@@ -108,6 +124,7 @@ namespace TooliRentApi
             }
 
             app.UseHttpsRedirection();
+            app.UseCors(CorsPolicy);
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
