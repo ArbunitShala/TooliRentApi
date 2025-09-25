@@ -1,13 +1,17 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using TooliRent.Core.DTOs.Catalog;
 using TooliRent.Core.Interfaces.Auth;
 using TooliRent.Infrastructure.Auth;
 using TooliRent.Infrastructure.Data;
 using TooliRent.Services.Services.Auth;
+using TooliRent.Services.Services.Catalog.Mapping;
+using TooliRent.Services.Services.Catalog.Validation;
 
 namespace TooliRentApi
 {
@@ -33,7 +37,6 @@ namespace TooliRentApi
                     )
                     .AllowAnyHeader()
                     .AllowAnyMethod()
-                // vi använder Bearer-header, inte cookies ? AllowCredentials behövs inte
                 );
             });
 
@@ -66,6 +69,12 @@ namespace TooliRentApi
                     }
                 });
             });
+
+            // AutoMapper scanna assemblyn där profil ligger
+            builder.Services.AddAutoMapper(typeof(ToolProfile).Assembly);
+
+            // FluentValidation registrerar konkret validator
+            builder.Services.AddScoped<IValidator<ToolQueryParams>, ToolQueryParamsValidator>();
 
             builder.Services.AddAuthorization();
 
