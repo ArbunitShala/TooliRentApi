@@ -1,3 +1,4 @@
+using AutoMapper;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -6,10 +7,11 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using TooliRent.Core.DTOs.Catalog;
-using TooliRent.Core.Interfaces.Auth;
+using TooliRent.Core.Interfaces.Catalog;
 using TooliRent.Infrastructure.Auth;
+using TooliRent.Infrastructure.Catalog; // ToolRepository
 using TooliRent.Infrastructure.Data;
-using TooliRent.Services.Services.Auth;
+using TooliRent.Services.Services.Catalog; // ToolService
 using TooliRent.Services.Services.Catalog.Mapping;
 using TooliRent.Services.Services.Catalog.Validation;
 
@@ -70,12 +72,6 @@ namespace TooliRentApi
                 });
             });
 
-            // AutoMapper scanna assemblyn där profil ligger
-            builder.Services.AddAutoMapper(typeof(ToolProfile).Assembly);
-
-            // FluentValidation registrerar konkret validator
-            builder.Services.AddScoped<IValidator<ToolQueryParams>, ToolQueryParamsValidator>();
-
             builder.Services.AddAuthorization();
 
             builder.Services.AddAuthentication(options =>
@@ -122,6 +118,18 @@ namespace TooliRentApi
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
+
+            // Catalog: repo + service
+            builder.Services.AddScoped<IToolRepository, ToolRepository>();
+            builder.Services.AddScoped<IToolService, ToolService>();
+
+            // FluentValidation registrerar konkret validator -----
+            builder.Services.AddScoped<IValidator<ToolQueryParams>, ToolQueryParamsValidator>();
+
+            // AutoMapper – scanna profiler (välj EN av raderna) -----
+            builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
+
 
             var app = builder.Build();
 
