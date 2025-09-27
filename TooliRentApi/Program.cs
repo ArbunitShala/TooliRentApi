@@ -5,12 +5,19 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Security.Claims;
 using System.Text;
+using TooliRent.Core.DTOs.Bookings;
 using TooliRent.Core.DTOs.Catalog;
+using TooliRent.Core.Interfaces.Bookings;
 using TooliRent.Core.Interfaces.Catalog;
 using TooliRent.Infrastructure.Auth;
+using TooliRent.Infrastructure.Bookings;
 using TooliRent.Infrastructure.Catalog; // ToolRepository
 using TooliRent.Infrastructure.Data;
+using TooliRent.Services.Services.Bookings;
+using TooliRent.Services.Services.Bookings.Mapping;
+using TooliRent.Services.Services.Bookings.Validation;
 using TooliRent.Services.Services.Catalog; // ToolService
 using TooliRent.Services.Services.Catalog.Mapping;
 using TooliRent.Services.Services.Catalog.Validation;
@@ -47,6 +54,11 @@ namespace TooliRentApi
             {
                 c.SwaggerDoc("v1", new() { Title = "TooliRent API", Version = "v1" });
 
+                // Lås Swagger till den bas-URL du faktiskt kör
+                c.AddServer(new OpenApiServer { Url = "http://localhost:5019" });
+                // När du kör https-profilen, byt till denna istället:
+                // c.AddServer(new OpenApiServer { Url = "https://localhost:7044" });
+
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
                     Name = "Authorization",
@@ -54,7 +66,7 @@ namespace TooliRentApi
                     Scheme = "Bearer",
                     BearerFormat = "JWT",
                     In = ParameterLocation.Header,
-                    Description = "Skriv: Bearer {ditt JWT-token}"
+                    Description = " Bearer <Klistra in din JWT här>"
                 });
 
                 c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -90,7 +102,10 @@ namespace TooliRentApi
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = jwtSettings["Issuer"],
                     ValidAudience = jwtSettings["Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(key)
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+
+                    NameClaimType = ClaimTypes.NameIdentifier,
+                    RoleClaimType = ClaimTypes.Role,
                 };
             });
 
@@ -129,6 +144,10 @@ namespace TooliRentApi
             // AutoMapper – scanna profiler (välj EN av raderna) -----
             builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
+            // Bookings
+            builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+            builder.Services.AddScoped<IBookingService, BookingService>();
+            builder.Services.AddScoped<IValidator<CreateBookingRequest>, CreateBookingRequestValidator>();
 
 
             var app = builder.Build();
@@ -140,7 +159,10 @@ namespace TooliRentApi
                 app.UseSwaggerUI();
             }
 
-            app.UseHttpsRedirection();
+            if (!app.Environment.IsDevelopment())
+            {
+                app.UseHttpsRedirection();
+            }
             app.UseCors(CorsPolicy);
             app.UseAuthentication();
             app.UseAuthorization();
