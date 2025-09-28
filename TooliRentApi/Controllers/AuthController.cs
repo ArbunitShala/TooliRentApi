@@ -11,6 +11,7 @@ namespace TooliRentApi.WebAPI.Controllers
 
     [ApiController]
     [Route("api/auth")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Member,Admin")]
     public sealed class AuthController : ControllerBase
     {
         private readonly IAuthService _auth;

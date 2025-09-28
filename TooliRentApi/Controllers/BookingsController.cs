@@ -10,8 +10,7 @@ namespace TooliRentApi.WebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(
-    AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Member,Admin")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Member,Admin")]
     public class BookingsController : ControllerBase
     {
         private readonly IBookingService _service;
