@@ -11,12 +11,22 @@ namespace TooliRentApi.WebAPI.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(
-    AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-    Roles = "Member,Admin")]
+    AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Member,Admin")]
     public class BookingsController : ControllerBase
     {
         private readonly IBookingService _service;
-        public BookingsController(IBookingService service) => _service = service;
+        private readonly IValidator<CheckoutRequest> _checkoutValidator;
+        private readonly IValidator<ReturnRequest> _returnValidator;
+
+        public BookingsController(
+        IBookingService service,
+        IValidator<CheckoutRequest> checkoutValidator,
+        IValidator<ReturnRequest> returnValidator)
+        {
+            _service = service;
+            _checkoutValidator = checkoutValidator;
+            _returnValidator = returnValidator;
+        }
 
         // Robust hämtning av användar-id (klarar olika claim-namn och null)
         private bool TryGetUserId(out Guid userId)
@@ -64,13 +74,6 @@ namespace TooliRentApi.WebAPI.Controllers
             return Ok(list);
         }
 
-        //public async Task<IActionResult> GetMyBookings(CancellationToken ct)
-        //{
-        //    if (!TryGetUserId(out var userId)) return Unauthorized();
-        //    var list = await _service.GetMyBookingsAsync(userId, ct);
-        //    return Ok(list);
-        //}
-
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetById([FromRoute] Guid id, CancellationToken ct)
         {
@@ -85,6 +88,58 @@ namespace TooliRentApi.WebAPI.Controllers
             if (!TryGetUserId(out var userId)) return Unauthorized();
             var ok = await _service.CancelAsync(userId, id, User.IsInRole("Admin"), ct);
             return ok ? NoContent() : NotFound();
+        }
+
+        // hämta ut bokning
+        [HttpPost("{id:guid}/pickup")]
+        public async Task<IActionResult> Pickup([FromRoute] Guid id, [FromBody] CheckoutRequest req, CancellationToken ct)
+        {
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+
+            var v = await _checkoutValidator.ValidateAsync(req, ct);
+            if (!v.IsValid)
+            {
+                foreach (var e in v.Errors)
+                    ModelState.AddModelError(e.PropertyName ?? "request", e.ErrorMessage);
+                return ValidationProblem(ModelState);
+            }
+
+            try
+            {
+                var dto = await _service.PickupAsync(userId, id, User.IsInRole("Admin"), req.WhenUtc, ct);
+                if (dto is null) return NotFound();
+                return Ok(dto);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+        }
+
+        // lämna tillbaka
+        [HttpPost("{id:guid}/return")]
+        public async Task<IActionResult> Return([FromRoute] Guid id, [FromBody] ReturnRequest req, CancellationToken ct)
+        {
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+
+            var v = await _returnValidator.ValidateAsync(req, ct);
+            if (!v.IsValid)
+            {
+                foreach (var e in v.Errors)
+                    ModelState.AddModelError(e.PropertyName ?? "request", e.ErrorMessage);
+                return ValidationProblem(ModelState);
+            }
+
+            try
+            {
+                var dto = await _service.ReturnAsync(userId, id, User.IsInRole("Admin"), req.WhenUtc, ct);
+                if (dto is null) return NotFound();
+                return Ok(dto);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
         }
     }
 }

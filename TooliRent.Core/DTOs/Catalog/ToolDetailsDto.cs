@@ -17,7 +17,5 @@ namespace TooliRent.Core.DTOs.Catalog
 
         public Guid CategoryId { get; set; }
         public string CategoryName { get; set; } = default!;
-
-        // Lägg till fler fält här vid behov (pris, plats etc) när de finns i modellen.
     }
 }
