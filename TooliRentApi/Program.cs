@@ -9,12 +9,14 @@ using System.Security.Claims;
 using System.Text;
 using TooliRent.Core.DTOs.Bookings;
 using TooliRent.Core.DTOs.Catalog;
+using TooliRent.Core.Interfaces.Admin;
 using TooliRent.Core.Interfaces.Bookings;
 using TooliRent.Core.Interfaces.Catalog;
 using TooliRent.Infrastructure.Auth;
 using TooliRent.Infrastructure.Bookings;
 using TooliRent.Infrastructure.Catalog; // ToolRepository
 using TooliRent.Infrastructure.Data;
+using TooliRent.Services.Services.Admin;
 using TooliRent.Services.Services.Bookings;
 using TooliRent.Services.Services.Bookings.Mapping;
 using TooliRent.Services.Services.Bookings.Validation;
@@ -62,7 +64,7 @@ namespace TooliRentApi
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
                     Name = "Authorization",
-                    Type = SecuritySchemeType.ApiKey,
+                    Type = SecuritySchemeType.ApiKey, //ApiKey
                     Scheme = "Bearer",
                     BearerFormat = "JWT",
                     In = ParameterLocation.Header,
@@ -109,6 +111,13 @@ namespace TooliRentApi
                 };
             });
 
+            // stänger av cookies redirect
+            builder.Services.ConfigureApplicationCookie(o =>
+            {
+                o.Events.OnRedirectToLogin = ctx => { ctx.Response.StatusCode = 401; return Task.CompletedTask; };
+                o.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = 403; return Task.CompletedTask; };
+            });
+
             // Add services to the container.
 
             builder.Services.AddDbContext<ApplicationDbContext>(opt =>
@@ -150,6 +159,12 @@ namespace TooliRentApi
             builder.Services.AddScoped<IValidator<CreateBookingRequest>, CreateBookingRequestValidator>();
             builder.Services.AddScoped<IValidator<CheckoutRequest>, CheckoutRequestValidator>();
             builder.Services.AddScoped<IValidator<ReturnRequest>, ReturnRequestValidator>();
+
+            // Admin operations
+            builder.Services.AddScoped<ICategoryAdminService, CategoryAdminService>();
+            builder.Services.AddScoped<IToolAdminService, ToolAdminService>();
+            builder.Services.AddScoped<IUserAdminService, UserAdminService>();
+            builder.Services.AddScoped<IStatsService, StatsService>();
 
 
             var app = builder.Build();
