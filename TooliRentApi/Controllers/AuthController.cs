@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using TooliRent.Core.DTOs.Auth;
@@ -39,8 +40,7 @@ namespace TooliRentApi.WebAPI.Controllers
             return res.Success ? Ok(res.Data) : Unauthorized(new { error = res.Error });
         }
 
-        // spärrar refresh-token
-        [Authorize]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         [HttpPost("logout")]
         public async Task<IActionResult> Logout([FromBody] RefreshRequest dto)
         {
