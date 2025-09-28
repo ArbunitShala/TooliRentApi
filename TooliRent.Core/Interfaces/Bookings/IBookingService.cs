@@ -13,5 +13,8 @@ namespace TooliRent.Core.Interfaces.Bookings
         Task<IReadOnlyList<BookingSummaryDto>> GetMyBookingsAsync(Guid userId, CancellationToken ct = default);
         Task<BookingDetailsDto?> GetByIdAsync(Guid requesterId, Guid bookingId, bool isAdmin, CancellationToken ct = default);
         Task<bool> CancelAsync(Guid requesterId, Guid bookingId, bool isAdmin, CancellationToken ct = default);
+
+        Task<BookingDetailsDto?> PickupAsync(Guid requesterId, Guid bookingId, bool isAdmin, DateTime? whenUtc, CancellationToken ct = default);
+        Task<BookingDetailsDto?> ReturnAsync(Guid requesterId, Guid bookingId, bool isAdmin, DateTime? whenUtc, CancellationToken ct = default);
     }
 }

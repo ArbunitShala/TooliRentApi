@@ -84,5 +84,50 @@ namespace TooliRent.Services.Services.Bookings
             await _repo.SaveChangesAsync(ct);
             return true;
         }
+
+        // PICKUP ----
+        public async Task<BookingDetailsDto?> PickupAsync(Guid requesterId, Guid bookingId, bool isAdmin, DateTime? whenUtc, CancellationToken ct = default)
+        {
+            var b = await _repo.GetByIdAsync(bookingId, ct);
+            if (b is null) return null;
+            if (!isAdmin && b.UserId != requesterId) return null;
+            if (b.Status == BookingStatus.Cancelled) throw new InvalidOperationException("Bokningen är avbokad.");
+            if (b.PickedUpAtUtc != null) return _mapper.Map<BookingDetailsDto>(b); // redan hämtad, idempotent
+
+            var t = whenUtc ?? DateTime.UtcNow;
+
+            // enkel regel, hämta inom bokningsfönstret
+            if (t < b.StartTime) throw new InvalidOperationException("Kan inte hämta innan starttid.");
+            if (t > b.EndTime) throw new InvalidOperationException("Kan inte hämta efter sluttid.");
+
+            b.PickedUpAtUtc = t;
+            // status förblir Active tills retur
+            await _repo.SaveChangesAsync(ct);
+
+            return _mapper.Map<BookingDetailsDto>(b);
+        }
+
+        // RETURN ----
+        public async Task<BookingDetailsDto?> ReturnAsync(Guid requesterId, Guid bookingId, bool isAdmin, DateTime? whenUtc, CancellationToken ct = default)
+        {
+            var b = await _repo.GetByIdAsync(bookingId, ct);
+            if (b is null) return null;
+            if (!isAdmin && b.UserId != requesterId) return null;
+            if (b.Status == BookingStatus.Cancelled) throw new InvalidOperationException("Bokningen är avbokad.");
+            if (b.ReturnedAtUtc != null) return _mapper.Map<BookingDetailsDto>(b); // redan återlämnad, idempotent
+
+            if (b.PickedUpAtUtc == null) throw new InvalidOperationException("Kan inte återlämna en bokning som inte hämtats.");
+
+            var t = whenUtc ?? DateTime.UtcNow;
+            if (t < b.PickedUpAtUtc.Value) throw new InvalidOperationException("Återlämningstid kan inte vara före hämtning.");
+
+            b.ReturnedAtUtc = t;
+
+            // Sätt status beroende på sen retur
+            b.Status = (t > b.EndTime) ? BookingStatus.Overdue : BookingStatus.Completed;
+
+            await _repo.SaveChangesAsync(ct);
+            return _mapper.Map<BookingDetailsDto>(b);
+        }
     }
 }

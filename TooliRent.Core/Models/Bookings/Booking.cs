@@ -17,6 +17,11 @@ namespace TooliRent.Core.Models.Bookings
 
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
+
+        // tidsstämplar för hämta/lämna
+        public DateTime? PickedUpAtUtc { get; set; }
+        public DateTime? ReturnedAtUtc { get; set; }
+
         public BookingStatus Status { get; set; } = BookingStatus.Active;
 
         public ICollection<BookingTool> BookingTools { get; set; } = new List<BookingTool>();
