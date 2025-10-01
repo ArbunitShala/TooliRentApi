@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using FluentValidation;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,52 +9,73 @@ using System.Threading.Tasks;
 using TooliRent.Core.DTOs.Bookings;
 using TooliRent.Core.Interfaces.Bookings;
 using TooliRent.Core.Models.Bookings;
+using TooliRent.Infrastructure.Data;
 
 namespace TooliRent.Services.Services.Bookings
 {
     public class BookingService : IBookingService
     {
+        private readonly ApplicationDbContext _db;
         private readonly IBookingRepository _repo;
         private readonly IMapper _mapper;
         private readonly IValidator<CreateBookingRequest> _validator;
 
-        public BookingService(IBookingRepository repo, IMapper mapper, IValidator<CreateBookingRequest> validator)
+        public BookingService(IBookingRepository repo, IMapper mapper, IValidator<CreateBookingRequest> validator,
+            ApplicationDbContext db)
         {
             _repo = repo;
             _mapper = mapper;
             _validator = validator;
+            _db = db;
         }
 
         public async Task<BookingDetailsDto> CreateAsync(Guid userId, CreateBookingRequest req, CancellationToken ct = default)
         {
-            // 1) DTO-validering
+            // 1) DTO-validering (du har redan FluentValidation)
             var v = await _validator.ValidateAsync(req, ct);
             if (!v.IsValid) throw new ValidationException(v.Errors);
 
-            // 2) ingen överlappning för något valt verktyg
+            // 2) Normalisera & sanity-check
+            var start = DateTime.SpecifyKind(req.StartUtc.UtcDateTime, DateTimeKind.Utc);
+            var end = DateTime.SpecifyKind(req.EndUtc.UtcDateTime, DateTimeKind.Utc);
+            if (end <= start) throw new InvalidOperationException("EndUtc måste vara efter StartUtc.");
+
+            // 3) ToolIds: ta bort tomma/dubletter
+            var toolIds = (req.ToolIds ?? new List<Guid>()).Where(id => id != Guid.Empty).Distinct().ToList();
+            if (toolIds.Count == 0) throw new InvalidOperationException("Minst ett verktyg måste väljas.");
+
+            // 4) verifiera att alla verktyg finns i DB annars blir det FK-krasch
+            var existing = await _db.Tools.Where(t => toolIds.Contains(t.Id))
+                                          .Select(t => t.Id)
+                                          .ToListAsync(ct);
+            var missing = toolIds.Except(existing).ToList();
+            if (missing.Count > 0)
+                throw new KeyNotFoundException($"Okända verktygs-ID:n: {string.Join(", ", missing)}");
+
+            // 5) Överlappskontroll (du hade detta – nu kör vi på de rensade IDs)
             var conflicts = new List<Guid>();
-            foreach (var toolId in req.ToolIds)
+            foreach (var toolId in toolIds)
             {
-                var overlap = await _repo.HasOverlapAsync(toolId, req.StartUtc, req.EndUtc, ct);
+                var overlap = await _repo.HasOverlapAsync(toolId, start, end, ct);
                 if (overlap) conflicts.Add(toolId);
             }
             if (conflicts.Count > 0)
                 throw new InvalidOperationException($"Följande verktyg är redan bokade under denna period: {string.Join(", ", conflicts)}");
 
-            // 3) Skapa bokning
+            // 6) Skapa bokningen – VIKTIGT: sätt ENDAST ToolId på join-raderna
             var booking = new Booking
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                StartTime = req.StartUtc,
-                EndTime = req.EndUtc,
+                StartTime = start,
+                EndTime = end,
                 Status = BookingStatus.Active,
-                BookingTools = req.ToolIds.Select(id => new BookingTool { ToolId = id }).ToList()
+                BookingTools = toolIds.Select(id => new BookingTool { ToolId = id }).ToList()
             };
 
             booking = await _repo.AddAsync(booking, ct);
 
-            // 4) Hämta inkl. Tool för att kunna mappa Tool-namn
+            // 7) Läs tillbaka inkl. navigationer för mappning
             var created = await _repo.GetByIdAsync(booking.Id, ct)!;
             return _mapper.Map<BookingDetailsDto>(created);
         }

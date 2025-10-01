@@ -8,8 +8,8 @@ namespace TooliRent.Core.DTOs.Bookings
 {
     public class CreateBookingRequest
     {
-        public DateTime StartUtc { get; set; }
-        public DateTime EndUtc { get; set; }
+        public DateTimeOffset StartUtc { get; set; }
+        public DateTimeOffset EndUtc { get; set; }
 
         // lista av Tool-Id som ska bokas
         public List<Guid> ToolIds { get; set; } = new();
