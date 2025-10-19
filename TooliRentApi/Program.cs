@@ -37,14 +37,15 @@ namespace TooliRentApi
             var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
 
             // CORS policy
-            const string CorsPolicy = "Dev";
+            const string CorsPolicy = "DefaultCors";
 
             builder.Services.AddCors(o =>
             {
                 o.AddPolicy(CorsPolicy, p =>
                     p.WithOrigins(
-                        "https://localhost:7044", // HTTPS-porten
-                        "http://localhost:5019"   // HTTP-porten
+                        "https://toolirent-api.azurewebsites.net", // din Azure-app
+                        "https://localhost:7044",                  // lokal https
+                        "http://localhost:5019"                    // lokal http
                     )
                     .AllowAnyHeader()
                     .AllowAnyMethod()
@@ -150,7 +151,7 @@ namespace TooliRentApi
             // FluentValidation registrerar konkret validator -----
             builder.Services.AddScoped<IValidator<ToolQueryParams>, ToolQueryParamsValidator>();
 
-            // AutoMapper – scanna profiler (välj EN av raderna) -----
+            // AutoMapper 
             builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
             // Bookings
@@ -169,22 +170,22 @@ namespace TooliRentApi
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
+            //  minimal pipeline för Azure
+
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
 
-            if (!app.Environment.IsDevelopment())
-            {
-                app.UseHttpsRedirection();
-            }
-            app.UseCors(CorsPolicy);
+            app.UseHttpsRedirection(); 
+            app.UseCors(CorsPolicy); 
             app.UseAuthentication();
             app.UseAuthorization();
+
             app.MapControllers();
 
+            // migrering/seed precis före start
             await AppSeeder.MigrateAndSeedAsync(app.Services);
 
             app.Run();
